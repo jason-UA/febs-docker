@@ -1,0 +1,81 @@
+version: '3'
+
+services:
+  febs-monitor-admin:
+    build: ../febs-monitor-admin
+    container_name: febs-monitor-admin
+    volumes:
+      - ../log:/log
+    command:
+      - "--nacos.url=47.115.6.195"
+    ports:
+      - 8401:8401
+  febs-gateway:
+    build: ../febs-gateway
+    container_name: febs-gateway
+    volumes:
+      - ../log:/log
+    command:
+      - "--nacos.url=47.115.6.195"
+      - "--febs.elk.address=47.115.6.195:4560"
+      - "--febs-monitor-admin=47.115.6.195"
+    ports:
+      - 8301:8301
+  febs-auth:
+    build: ../febs-auth
+    container_name: febs-auth
+    depends_on:
+      - febs-gateway
+    volumes:
+      - "../log:/log"
+    command:
+      - "--mysql.url=47.115.6.195"
+      - "--redis.url=47.115.6.195"
+      - "--nacos.url=47.115.6.195"
+      - "--febs-monitor-admin=47.115.6.195"
+  febs-server-system:
+    build: ../febs-server-system
+    container_name: febs-server-system
+    depends_on:
+      - febs-gateway
+    volumes:
+      - "../log:/log"
+    command:
+      - "--mysql.url=47.115.6.195"
+      - "--rabbitmq.url=47.115.6.195"
+      - "--zipkin.url=47.115.6.195:9411"
+      - "--febs.elk.address=47.115.6.195:4560"
+      - "--nacos.url=47.115.6.195"
+      - "--febs-monitor-admin=47.115.6.195"
+      - "--febs-gateway=47.115.6.195"
+  febs-server-test:
+    build: ../febs-server-test
+    container_name: febs-server-test
+    depends_on:
+      - febs-gateway
+    volumes:
+      - "../log:/log"
+    command:
+      - "--zipkin.url=47.115.6.195:9411"
+      - "--rabbitmq.url=47.115.6.195"
+      - "--nacos.url=47.115.6.195"
+      - "--febs.elk.address=47.115.6.195:4560"
+      - "--febs-monitor-admin=47.115.6.195"
+      - "--febs-gateway=47.115.6.195"
+  zipkin-server:
+    build: ../zipkin-server
+    container_name: zipkin-server
+    command:
+      - "--server.port=8402"
+      - "--zipkin.storage.type=mysql"
+      - "--zipkin.storage.mysql.db=febs_cloud_base"
+      - "--zipkin.storage.mysql.username=root"
+      - "--zipkin.storage.mysql.password=123456"
+      - "--zipkin.storage.mysql.host=47.115.6.195"
+      - "--zipkin.storage.mysql.port=3306"
+      - "--zipkin.collector.rabbitmq.addresses=47.115.6.195:5672"
+      - "--zipkin.collector.rabbitmq.username=febs"
+      - "--zipkin.collector.rabbitmq.password=123456"
+    ports:
+      - 8402:8402
+      - 9411:9411
